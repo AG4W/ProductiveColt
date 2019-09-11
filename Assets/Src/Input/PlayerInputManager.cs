@@ -26,6 +26,7 @@ public class PlayerInputManager : MonoBehaviour
 
         _movementInput.x = Input.GetAxisRaw("Horizontal");
         _movementInput.y = Input.GetAxisRaw("Vertical");
+        _movementInput.Normalize();
 
         if (!_invertY)
             _mouseInput.y *= -1f;
