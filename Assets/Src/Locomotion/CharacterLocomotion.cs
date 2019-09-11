@@ -3,7 +3,7 @@ using UnityEngine;
 
 public class CharacterLocomotion : MonoBehaviour
 {
-    [Range(100f, 2000f)][SerializeField]float _movementSpeed = 100f;
+    [Range(1f, 10f)][SerializeField]float _movementSpeed = 100f;
     [Range(100f, 1000f)][SerializeField]float _jumpStrength = 100f;
 
     Entity _entity;
@@ -47,7 +47,7 @@ public class CharacterLocomotion : MonoBehaviour
         Vector3 relative = (this.transform.forward * input.y) + (this.transform.right * input.x);
 
         if (!_isJumping)
-            _rigidbody.AddForce(relative * _movementSpeed, ForceMode.Force);
+            _rigidbody.AddForce(relative * _movementSpeed, ForceMode.VelocityChange);
             //_rigidbody.MovePosition(this.transform.position + (relative * _movementSpeed * Time.fixedDeltaTime));
     }
     void Jump()
