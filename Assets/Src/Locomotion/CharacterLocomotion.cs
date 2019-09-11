@@ -2,7 +2,7 @@
 
 public class CharacterLocomotion : MonoBehaviour
 {
-    [Range(1f, 10f)][SerializeField]float _movementSpeed = 2.5f;
+    [Range(100f, 300f)][SerializeField]float _movementSpeed = 2.5f;
     [Range(1f, 100f)][SerializeField]float _jumpStrength = 10f;
 
     [Range(.01f, 1f)][SerializeField]float _groundedThreshold = .25f;
@@ -38,6 +38,8 @@ public class CharacterLocomotion : MonoBehaviour
     [SerializeField]bool _isObscured = false;
     [SerializeField]bool _isAiming = false;
 
+    [SerializeField]WeaponBehaviour _weapon;
+
     [Header("Misc")]
     [SerializeField]bool _displayDebugRays = false;
 
@@ -51,6 +53,14 @@ public class CharacterLocomotion : MonoBehaviour
 
         InitializeEvents();
     }
+    void FixedUpdate()
+    {
+        if (_rigidbody.velocity.magnitude < .5f)
+            _rigidbody.velocity = Vector3.zero;
+
+        UpdateGroundedStatus();
+        UpdateObscuredStatus();
+    }
 
     void InitializeEvents()
     {
@@ -60,15 +70,6 @@ public class CharacterLocomotion : MonoBehaviour
         _entity.events.Subscribe(LocalEvent.UpdateAimingInput, UpdateAimingStatus);
         _entity.events.Subscribe(LocalEvent.Jump, (object[] args) => Jump());
         _entity.events.Subscribe(LocalEvent.Fire, (object[] args) => Fire());
-    }
-
-    void FixedUpdate()
-    {
-        if (_rigidbody.velocity.magnitude < .5f)
-            _rigidbody.velocity = Vector3.zero;
-
-        UpdateGroundedStatus();
-        UpdateObscuredStatus();
     }
 
     void OnMouseInputUpdated(Vector2 input)
@@ -81,16 +82,21 @@ public class CharacterLocomotion : MonoBehaviour
     void OnMovementInputUpdated(Vector2 input)
     {
         Vector3 relative = (this.transform.forward * input.y) + (this.transform.right * input.x);
+        Vector3 force;
 
         if (!_isGrounded)
-            _rigidbody.AddForce(relative * _movementSpeed * _airborneSpeedModifier, ForceMode.VelocityChange);
+            force = relative * _movementSpeed * _airborneSpeedModifier;
         else
         {
             if(_isCrouching)
-                _rigidbody.AddForce(relative * _movementSpeed * _crouchedSpeedModifier, ForceMode.VelocityChange);
+                force = relative * _movementSpeed * _crouchedSpeedModifier;
             else
-                _rigidbody.AddForce(relative * (_isAiming ? _movementSpeed * _aimingSpeedModifier : _movementSpeed), ForceMode.VelocityChange);
+                force = relative * (_isAiming ? _movementSpeed * _aimingSpeedModifier : _movementSpeed);
         }
+
+        force *= Time.fixedDeltaTime;
+
+        _rigidbody.AddForce(force, ForceMode.VelocityChange);
         //_rigidbody.MovePosition(this.transform.position + (relative * _movementSpeed * Time.fixedDeltaTime));
     }
     void Jump()
@@ -161,9 +167,9 @@ public class CharacterLocomotion : MonoBehaviour
     }
     void Fire()
     {
-        Ray ray = new Ray(_camera.transform.position, _camera.transform.forward);
+        if (_isObscured)
+            return;
 
-        if(_displayDebugRays)
-            Debug.DrawRay(_camera.transform.position, _camera.transform.forward * 10000f, Color.red, 5f);
+        _weapon?.Fire(_camera.transform.position, _camera.transform.forward);
     }
 }

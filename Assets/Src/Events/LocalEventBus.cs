@@ -25,6 +25,11 @@ public class LocalEventBus
             _events[(int)e][i]?.Invoke(args);
     }
 
+    public void Clear()
+    {
+        OnRaised -= Raise;
+    }
+
     public static void RaiseAll(LocalEvent e, params object[] args)
     {
         OnRaised?.Invoke(e, args);
