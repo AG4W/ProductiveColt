@@ -1,17 +1,18 @@
-﻿using System.Collections;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class CharacterLocomotion : MonoBehaviour
 {
     [Range(1f, 10f)][SerializeField]float _movementSpeed = 100f;
-    [Range(100f, 1000f)][SerializeField]float _jumpStrength = 100f;
+    [Range(1f, 100f)][SerializeField]float _jumpStrength = 100f;
+
+    [SerializeField]float _groundedThreshold = .1f;
 
     Entity _entity;
 
     Rigidbody _rigidbody;
     Camera _camera;
 
-    bool _isJumping = false;
+    [SerializeField]bool _isGrounded = true;
 
     void Awake()
     {
@@ -31,8 +32,10 @@ public class CharacterLocomotion : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (_rigidbody.velocity.magnitude < .25f)
+        if (_rigidbody.velocity.magnitude < .5f)
             _rigidbody.velocity = Vector3.zero;
+
+        UpdateGroundedStatus();
     }
 
     void OnMouseInputUpdated(Vector2 input)
@@ -46,21 +49,25 @@ public class CharacterLocomotion : MonoBehaviour
     {
         Vector3 relative = (this.transform.forward * input.y) + (this.transform.right * input.x);
 
-        if (!_isJumping)
+        if (_isGrounded)
             _rigidbody.AddForce(relative * _movementSpeed, ForceMode.VelocityChange);
             //_rigidbody.MovePosition(this.transform.position + (relative * _movementSpeed * Time.fixedDeltaTime));
     }
     void Jump()
     {
-        _rigidbody.AddForce((_rigidbody.velocity * _jumpStrength) + (Vector3.up * _jumpStrength), ForceMode.Impulse);
-        _isJumping = true;
+        if (!_isGrounded)
+            return;
 
-        StartCoroutine(JumpCooldown());
+        _rigidbody.AddForce(Vector3.up * _jumpStrength, ForceMode.VelocityChange);
     }
 
-    IEnumerator JumpCooldown()
+    void UpdateGroundedStatus()
     {
-        yield return new WaitForSeconds(1f);
-        _isJumping = false;
+        Ray ray = new Ray(this.transform.position + (Vector3.up * .25f), Vector3.down);
+
+        _isGrounded = Physics.Raycast(ray, _groundedThreshold);
+        _rigidbody.drag = _isGrounded ? 10f : 0f;
+
+        Debug.DrawRay(this.transform.position + (Vector3.up * .25f), Vector3.down * _groundedThreshold, Color.yellow);
     }
 }

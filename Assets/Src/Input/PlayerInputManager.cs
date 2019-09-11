@@ -31,6 +31,8 @@ public class PlayerInputManager : MonoBehaviour
         if (!_invertY)
             _mouseInput.y *= -1f;
 
+        if (Input.GetKeyDown(KeyCode.T))
+            GlobalEventBus.Raise(GlobalEvent.ToggleSlowMotion);
         if (Input.GetKeyDown(KeyCode.Space))
             _entity.events.Raise(LocalEvent.Jump);
     }
