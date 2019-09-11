@@ -35,10 +35,11 @@ public class PlayerInputManager : MonoBehaviour
             GlobalEventBus.Raise(GlobalEvent.ToggleSlowMotion);
         if (Input.GetKeyDown(KeyCode.Space))
             _entity.events.Raise(LocalEvent.Jump);
+    
+        if(Input.GetKey(KeyCode.Mouse0))
+            _entity.events.Raise(LocalEvent.Fire);
 
-        _entity.events.Raise(LocalEvent.Fire, Input.GetKey(KeyCode.Mouse0));
         _entity.events.Raise(LocalEvent.UpdateAimingInput, Input.GetKey(KeyCode.Mouse1));
-
         _entity.events.Raise(LocalEvent.UpdateCrouchInput, Input.GetKey(KeyCode.LeftControl));
     }
     void FixedUpdate()

@@ -59,6 +59,7 @@ public class CharacterLocomotion : MonoBehaviour
         _entity.events.Subscribe(LocalEvent.UpdateCrouchInput, UpdateCrouchingStatus);
         _entity.events.Subscribe(LocalEvent.UpdateAimingInput, UpdateAimingStatus);
         _entity.events.Subscribe(LocalEvent.Jump, (object[] args) => Jump());
+        _entity.events.Subscribe(LocalEvent.Fire, (object[] args) => Fire());
     }
 
     void FixedUpdate()
@@ -157,5 +158,12 @@ public class CharacterLocomotion : MonoBehaviour
                 _weaponJig.transform.localEulerAngles = _weaponJigIdleEulerAngles;
             }
         }
+    }
+    void Fire()
+    {
+        Ray ray = new Ray(_camera.transform.position, _camera.transform.forward);
+
+        if(_displayDebugRays)
+            Debug.DrawRay(_camera.transform.position, _camera.transform.forward * 10000f, Color.red, 5f);
     }
 }
