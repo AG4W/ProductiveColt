@@ -7,10 +7,12 @@ public class CharacterLocomotion : MonoBehaviour
 
     [Range(.01f, 1f)][SerializeField]float _groundedThreshold = .25f;
     [Range(.01f, 1f)][SerializeField]float _obscuredThreshold = 1f;
+    [Range(.5f, 5f)][SerializeField]float _slideSpeedThreshold = 5f;
 
     [Range(.0001f, 1f)][SerializeField]float _airborneSpeedModifier = .1f;
     [Range(.0001f, 1f)][SerializeField]float _crouchedSpeedModifier = .25f;
     [Range(.0001f, 1f)][SerializeField]float _aimingSpeedModifier = .5f;
+    [Range(.0001f, 10f)][SerializeField]float _slidingSpeedModifier = 2f;
 
     Entity _entity;
 
@@ -32,11 +34,16 @@ public class CharacterLocomotion : MonoBehaviour
 
     [SerializeField]float _standingHeight = 1.8f;
     [SerializeField]float _crouchingHeight = 1f;
+    [SerializeField]float _slidingHeight = .75f;
+
+    float _timeSpentSliding = 0f;
+    [SerializeField]float _slideTimeScaleFactor = 21f;
 
     [SerializeField]bool _isCrouching = false;
     [SerializeField]bool _isGrounded = true;
     [SerializeField]bool _isObscured = false;
     [SerializeField]bool _isAiming = false;
+    [SerializeField]bool _isSliding = false;
 
     [SerializeField]WeaponBehaviour _weapon;
 
@@ -55,8 +62,11 @@ public class CharacterLocomotion : MonoBehaviour
     }
     void FixedUpdate()
     {
-        if (_rigidbody.velocity.magnitude < .5f)
-            _rigidbody.velocity = Vector3.zero;
+        //if (_rigidbody.velocity.magnitude < .5f)
+        //    _rigidbody.velocity = Vector3.zero;
+
+        if (_isSliding)
+            _timeSpentSliding += Time.fixedDeltaTime;
 
         UpdateGroundedStatus();
         UpdateObscuredStatus();
@@ -66,7 +76,7 @@ public class CharacterLocomotion : MonoBehaviour
     {
         _entity.events.Subscribe(LocalEvent.UpdateMouseInput, (object[] args) => OnMouseInputUpdated((Vector2)args[0]));
         _entity.events.Subscribe(LocalEvent.UpdateMovementInput, (object[] args) => OnMovementInputUpdated((Vector2)args[0]));
-        _entity.events.Subscribe(LocalEvent.UpdateCrouchInput, UpdateCrouchingStatus);
+        _entity.events.Subscribe(LocalEvent.UpdateCrouchInput, UpdateCrouchingAndSliding);
         _entity.events.Subscribe(LocalEvent.UpdateAimingInput, UpdateAimingStatus);
         _entity.events.Subscribe(LocalEvent.Jump, (object[] args) => Jump());
         _entity.events.Subscribe(LocalEvent.Fire, (object[] args) => Fire());
@@ -90,6 +100,8 @@ public class CharacterLocomotion : MonoBehaviour
         {
             if(_isCrouching)
                 force = relative * _movementSpeed * _crouchedSpeedModifier;
+            else if (_isSliding)
+                force = relative * (_movementSpeed * _slidingSpeedModifier / (_timeSpentSliding * _slideTimeScaleFactor));
             else
                 force = relative * (_isAiming ? _movementSpeed * _aimingSpeedModifier : _movementSpeed);
         }
@@ -104,7 +116,14 @@ public class CharacterLocomotion : MonoBehaviour
         if (!_isGrounded)
             return;
 
-        _rigidbody.AddForce(Vector3.up * _jumpStrength, ForceMode.VelocityChange);
+        if (_isSliding)
+        {
+            _isSliding = false;
+
+            UpdateCameraJig();
+        }
+
+        _rigidbody.velocity += Vector3.up * _jumpStrength;
     }
 
     void UpdateGroundedStatus()
@@ -112,19 +131,40 @@ public class CharacterLocomotion : MonoBehaviour
         Ray ray = new Ray(this.transform.position + (Vector3.up * .25f), Vector3.down);
 
         _isGrounded = Physics.Raycast(ray, _groundedThreshold);
-        _rigidbody.drag = _isGrounded ? 10f : 0f;
+        _rigidbody.drag = !_isGrounded || _isSliding ? 0f : 10f;
     
         if(_displayDebugRays)
             Debug.DrawRay(this.transform.position + (Vector3.up * .25f), Vector3.down * _groundedThreshold, Color.yellow);
     }
-    void UpdateCrouchingStatus(object[] args)
+    void UpdateCrouchingAndSliding(object[] args)
     {
-        _isCrouching = (bool)args[0];
-    
-        _cameraJig.transform.localPosition = new Vector3(0f, _isCrouching ? _crouchingHeight : _standingHeight, 0f);
+        //if we either want to crouch or slide
+        if ((bool)args[0])
+        {
+            if (_isSliding)
+                return;
 
-        _collider.height = _isCrouching ? _crouchingHeight : _standingHeight;
-        _collider.transform.localPosition = new Vector3(0f, _collider.height / 2, 0f);
+            _isSliding = _rigidbody.velocity.magnitude >= _slideSpeedThreshold;
+
+            if (_isSliding)
+            {
+                if (!_isGrounded)
+                    return;
+
+                _timeSpentSliding = Time.fixedDeltaTime;
+            }
+            else
+            {
+                _isCrouching = true;
+            }
+        }
+        else
+        {
+            _isSliding = false;
+            _isCrouching = false;
+        }
+
+        UpdateCameraJig();
     }
     void UpdateObscuredStatus()
     {
@@ -144,6 +184,26 @@ public class CharacterLocomotion : MonoBehaviour
         UpdateWeaponJig();
     }
 
+    void UpdateCameraJig()
+    {
+        if(_isCrouching)
+        {
+            _cameraJig.transform.localPosition = new Vector3(0f, _crouchingHeight, 0f);
+            _collider.height = _crouchingHeight;
+        }
+        else if (_isSliding)
+        {
+            _cameraJig.transform.localPosition = new Vector3(0f, _slidingHeight, 0f);
+            _collider.height = _slidingHeight;
+        }
+        else
+        {
+            _cameraJig.transform.localPosition = new Vector3(0f, _standingHeight, 0f);
+            _collider.height = _standingHeight;
+        }
+
+        _collider.transform.localPosition = new Vector3(0f, _collider.height / 2, 0f);
+    }
     void UpdateWeaponJig()
     {
         if (_isObscured)
@@ -171,5 +231,8 @@ public class CharacterLocomotion : MonoBehaviour
             return;
 
         _weapon?.Fire(_camera.transform.position, _camera.transform.forward);
+
+        if (_displayDebugRays)
+            Debug.DrawRay(_camera.transform.position, _camera.transform.forward * 10000f, Color.red, 5f);
     }
 }
