@@ -36,5 +36,8 @@ public enum LocalEvent
 {
     UpdateMouseInput,
     UpdateMovementInput,
+    UpdateCrouchInput,
+    UpdateAimingInput,
     Jump,
+    Fire,
 }
